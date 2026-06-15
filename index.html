@@ -679,6 +679,83 @@ h2 {
   justify-content: center;
 }
 
+.art-history-item { cursor: pointer; }
+.art-history-detail {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.55);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+.art-history-detail.open { display: flex; }
+.art-history-detail-panel {
+  position: relative;
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  max-width: 420px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: auto;
+  padding: 20px 20px 16px;
+  box-shadow: var(--shadow-lg);
+}
+.art-history-detail-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--card-bg);
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1;
+  font-weight: 400;
+  cursor: pointer;
+  z-index: 2;
+  box-shadow: var(--shadow-sm);
+}
+.art-history-detail-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--dark);
+  margin: 0 36px 4px 0;
+  line-height: 1.3;
+}
+.art-history-detail-date {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+.art-history-detail-insight {
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+.art-history-detail-img {
+  display: block;
+  width: 100%;
+  max-height: min(60vh, 520px);
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--light-bg);
+}
+.art-history-detail-no-photo {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  padding: 24px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+
 /* Keep file inputs in the DOM (display:none breaks Android pickers) */
 .art-file-input-hidden {
   position: absolute;
@@ -1243,6 +1320,12 @@ h2 {
   <input type="file" accept="application/json,.json" id="art-import-input" style="display:none" onchange="importArtHistory(event)">
   <input type="file" class="art-file-input-hidden" id="art-history-photo-input" onchange="handleArtHistoryPhoto(event)">
   <div id="art-history-list"></div>
+  <div id="art-history-detail" class="art-history-detail" onclick="closeArtHistoryDetail(event)">
+    <div class="art-history-detail-panel" onclick="event.stopPropagation()">
+      <button type="button" class="art-history-detail-close" onclick="closeArtHistoryDetail()" aria-label="Close">×</button>
+      <div id="art-history-detail-body"></div>
+    </div>
+  </div>
   <div style="height:24px"></div>
 </div>
 
@@ -1562,7 +1645,10 @@ function showScreen(name){
   if(name==='art-books') renderArtBooks();
   if(name==='art-add-log') renderArtAddLog();
   if(name==='art-history') renderArtHistory();
-  else closeArtHistoryActions();
+  else{
+    closeArtHistoryActions();
+    closeArtHistoryDetail();
+  }
   window.scrollTo({top:0,behavior:'smooth'});
   requestAnimationFrame(()=>initFadeIns());
   if(name!=='lobby') history.replaceState(null,'','#'+name);
@@ -2718,18 +2804,45 @@ function renderArtHistory(){
     const d=new Date(g.completedAt).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
     const img=artBatchImageForGroup(g.completedAt);
     const imgHtml=img
-      ?'<div class="art-history-thumb-wrap"><img src="'+img+'" alt="Logged page" class="art-history-thumb" onclick="promptArtHistoryPhoto('+i+')"></div>'+
-        '<button type="button" class="art-history-thumb-remove" onclick="removeArtHistoryPhoto('+i+')" aria-label="Remove photo">×</button>'
-      :'<button type="button" class="art-history-thumb-add" onclick="promptArtHistoryPhoto('+i+')">Add photo</button>';
+      ?'<div class="art-history-thumb-wrap"><img src="'+img+'" alt="Logged page" class="art-history-thumb" onclick="event.stopPropagation();openArtHistoryDetail('+i+')"></div>'+
+        '<button type="button" class="art-history-thumb-remove" onclick="event.stopPropagation();removeArtHistoryPhoto('+i+')" aria-label="Remove photo">×</button>'
+      :'<button type="button" class="art-history-thumb-add" onclick="event.stopPropagation();promptArtHistoryPhoto('+i+')">Add photo</button>';
     const pagePart=g.pages.length>1?'p.'+g.pageLabel:'p.'+g.pageLabel;
     const insightHtml=g.insight&&g.insight!=='Logged'?'<div class="word-meaning">'+esc(g.insight)+'</div>':'';
-    return '<div class="word-item"><div class="art-history-item-row"><div class="art-history-item-main">'+
+    return '<div class="word-item art-history-item" onclick="openArtHistoryDetail('+i+')"><div class="art-history-item-row"><div class="art-history-item-main">'+
       '<div class="word-row"><div class="word-top"><span class="word-jp">'+g.bookName+' · '+pagePart+'</span></div></div>'+
       '<div class="word-reading">'+d+'</div>'+insightHtml+
-      '<div class="word-actions" style="margin-top:8px"><button class="btn-action edit" onclick="startEditArtLog('+i+')">Edit</button><button class="btn-action remove" onclick="removeArtHistoryGroup('+i+')">Remove</button></div></div>'+
+      '<div class="word-actions" style="margin-top:8px"><button class="btn-action edit" onclick="event.stopPropagation();startEditArtLog('+i+')">Edit</button><button class="btn-action remove" onclick="event.stopPropagation();removeArtHistoryGroup('+i+')">Remove</button></div></div>'+
       '<div class="art-history-thumb-col">'+imgHtml+'</div></div></div>';
   }).join('');
   sizeArtHistoryThumbs();
+}
+function openArtHistoryDetail(index){
+  const log=getArtPageLog();
+  if(!log)return;
+  const groups=groupArtLogForDisplay(log);
+  if(index<0||index>=groups.length)return;
+  const g=groups[index];
+  const img=artBatchImageForGroup(g.completedAt);
+  const d=new Date(g.completedAt).toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  const pagePart='p.'+g.pageLabel;
+  const body=document.getElementById('art-history-detail-body');
+  const overlay=document.getElementById('art-history-detail');
+  if(!body||!overlay)return;
+  let html='<h3 class="art-history-detail-title">'+esc(g.bookName)+' · '+pagePart+'</h3>';
+  html+='<div class="art-history-detail-date">'+d+'</div>';
+  if(g.insight&&g.insight!=='Logged')html+='<div class="art-history-detail-insight">'+esc(g.insight)+'</div>';
+  if(img)html+='<img src="'+img+'" alt="Logged page" class="art-history-detail-img">';
+  else html+='<div class="art-history-detail-no-photo">No photo attached</div>';
+  body.innerHTML=html;
+  overlay.classList.add('open');
+  closeArtHistoryActions();
+}
+function closeArtHistoryDetail(ev){
+  const overlay=document.getElementById('art-history-detail');
+  if(!overlay)return;
+  if(ev&&ev.target!==ev.currentTarget)return;
+  overlay.classList.remove('open');
 }
 function sizeArtHistoryThumbs(){
   requestAnimationFrame(()=>{
@@ -2804,6 +2917,9 @@ window.addEventListener('hashchange',()=>{
   if(document.getElementById('screen-'+name)) showScreen(name);
 });
 window.addEventListener('resize',sizeArtHistoryThumbs);
+document.addEventListener('keydown',function(ev){
+  if(ev.key==='Escape')closeArtHistoryDetail();
+});
 </script>
 </body>
 </html>
